@@ -1641,30 +1641,37 @@
     }
     function saveToServer() {
         if (saveTimer) clearTimeout(saveTimer);
-        saveTimer = setTimeout(function () {
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', (window.eitAjax || {}).url || '/wp-admin/admin-ajax.php');
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xhr.timeout = 15000;
-            xhr.onload = function () {
-                if (xhr.status === 200) {
-                    try {
-                        var res = JSON.parse(xhr.responseText);
-                        if (res.success) {
-                            if (typeof res.data.version !== 'undefined') dataVersion = res.data.version;
-                            showSaveToast('Kaydedildi', false);
-                        } else {
-                            showSaveToast('Kayıt hatası: ' + (res.data || 'Bilinmeyen'), true);
-                        }
-                    } catch (e) { showSaveToast('Kayıt hatası: Geçersiz yanıt', true); }
-                } else {
-                    showSaveToast('Kayıt hatası: HTTP ' + xhr.status, true);
-                }
-            };
-            xhr.onerror = function () { showSaveToast('Kayıt başarısız: ağ hatası', true); };
-            xhr.ontimeout = function () { showSaveToast('Kayıt zaman aşımı', true); };
-            xhr.send('action=eit_save_books&nonce=' + ((window.eitAjax || {}).nonce || '') + '&version=' + dataVersion + '&books=' + encodeURIComponent(JSON.stringify(allBooks)) + '&atananlar=' + encodeURIComponent(JSON.stringify(allAtananlar)));
-        }, 500);
+        saveTimer = setTimeout(function () { doSave(0); }, 500);
+    }
+    function doSave(attempt) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', (window.eitAjax || {}).url || '/wp-admin/admin-ajax.php');
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.timeout = 30000;
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                try {
+                    var res = JSON.parse(xhr.responseText);
+                    if (res.success) {
+                        if (typeof res.data.version !== 'undefined') dataVersion = res.data.version;
+                        showSaveToast('Kaydedildi', false);
+                    } else {
+                        showSaveToast('Kayıt hatası: ' + (res.data || 'Bilinmeyen'), true);
+                    }
+                } catch (e) { showSaveToast('Kayıt hatası: Geçersiz yanıt', true); }
+            } else {
+                showSaveToast('Kayıt hatası: HTTP ' + xhr.status, true);
+            }
+        };
+        xhr.onerror = function () {
+            if (attempt < 1) { setTimeout(function () { doSave(attempt + 1); }, 2000); showSaveToast('Bağlantı hatası, tekrar deneniyor...', true); }
+            else showSaveToast('Kayıt başarısız: ağ hatası', true);
+        };
+        xhr.ontimeout = function () {
+            if (attempt < 1) { setTimeout(function () { doSave(attempt + 1); }, 2000); showSaveToast('Sunucu yavaş, tekrar deneniyor...', true); }
+            else showSaveToast('Kayıt zaman aşımı — lütfen sayfayı yenileyip tekrar deneyin', true);
+        };
+        xhr.send('action=eit_save_books&nonce=' + ((window.eitAjax || {}).nonce || '') + '&version=' + dataVersion + '&books=' + encodeURIComponent(JSON.stringify(allBooks)) + '&atananlar=' + encodeURIComponent(JSON.stringify(allAtananlar)));
     }
     window.eitSave = saveToServer;
     window.eitGetDataVersion = function () { return dataVersion; };

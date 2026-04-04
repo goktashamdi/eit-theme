@@ -537,7 +537,7 @@
         fd.append('json', JSON.stringify(newData));
         var xhr = new XMLHttpRequest();
         xhr.open('POST', (window.eitAjax || {}).url || '/wp-admin/admin-ajax.php');
-        xhr.timeout = 15000;
+        xhr.timeout = 30000;
         xhr.onload = function () {
             if (xhr.status === 200) {
                 try {
