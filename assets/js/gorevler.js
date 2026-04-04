@@ -331,6 +331,7 @@
                     ic.gorev.durum = 'Tamamland\u0131';
                     ic.gorev.tamamlanmaTarihi = new Date().toISOString().split('T')[0];
                     renderView();
+                    if (window.eitMarkDirty) window.eitMarkDirty(bookId);
                     if (window.eitSave) window.eitSave();
                 } else {
                     gorevAction(bookId, ui, ii, 'tamamla', 0, function (ok) {

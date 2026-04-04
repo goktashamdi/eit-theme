@@ -488,6 +488,7 @@
         });
         aktarSel = {};
         _bookMatchCache = null; // kitap verileri değişti
+        idxs.forEach(function (i) { var b = allB[parseInt(i)]; if (b && window.eitMarkDirty) window.eitMarkDirty(b.id); });
         if (window.eitSave) window.eitSave();
         renderView();
     }

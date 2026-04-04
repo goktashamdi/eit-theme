@@ -14,6 +14,7 @@
     var searchQuery = '';
     var allAtananlar = [];
     var dataVersion = -1;
+    var dirtyBookIds = {};
 
     /* ─── Kitap durumları (phase kaldırıldı) ─── */
     var kitapDurumlari = ['Havuzda', '\u0130\u015flemde', 'TTKB Onay\u0131', 'Ask\u0131da', 'Pasif'];
@@ -233,6 +234,7 @@
                     });
                     categories = resp.data.categories;
                     if (typeof resp.data.version !== 'undefined') dataVersion = resp.data.version;
+                    dirtyBookIds = {};
                     // Build unique atananlar list from e-icerikler + saved list
                     var aSet = {};
                     allBooks.forEach(function (b) {
@@ -1640,6 +1642,7 @@
         setTimeout(function () { t.style.opacity = '0'; setTimeout(function () { t.remove(); }, 300); }, 3000);
     }
     function saveToServer() {
+        if (Object.keys(dirtyBookIds).length === 0) return; // degisiklik yoksa kaydetme
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(function () { doSave(0); }, 500);
     }
@@ -1654,7 +1657,10 @@
                     var res = JSON.parse(xhr.responseText);
                     if (res.success) {
                         if (typeof res.data.version !== 'undefined') dataVersion = res.data.version;
+                        dirtyBookIds = {};
                         showSaveToast('Kaydedildi', false);
+                    } else if (typeof res.data === 'string' && res.data.indexOf('güncellendi') !== -1 && attempt < 1) {
+                        mergeAndRetry();
                     } else {
                         showSaveToast('Kayıt hatası: ' + (res.data || 'Bilinmeyen'), true);
                     }
@@ -1673,7 +1679,35 @@
         };
         xhr.send('action=eit_save_books&nonce=' + ((window.eitAjax || {}).nonce || '') + '&version=' + dataVersion + '&books=' + encodeURIComponent(JSON.stringify(allBooks)) + '&atananlar=' + encodeURIComponent(JSON.stringify(allAtananlar)));
     }
+    function mergeAndRetry() {
+        showSaveToast('Birleştiriliyor...', false);
+        // Dirty kitaplarin kopyasini al
+        var myChanges = {};
+        allBooks.forEach(function (b) { if (dirtyBookIds[b.id]) myChanges[b.id] = JSON.parse(JSON.stringify(b)); });
+        // Sunucudan guncel veriyi cek
+        var xhr2 = new XMLHttpRequest();
+        xhr2.open('POST', (window.eitAjax || {}).url || '/wp-admin/admin-ajax.php');
+        xhr2.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr2.timeout = 30000;
+        xhr2.onload = function () {
+            if (xhr2.status !== 200) { showSaveToast('Birleştirme başarısız', true); return; }
+            try {
+                var resp = JSON.parse(xhr2.responseText);
+                if (!resp.success) { showSaveToast('Birleştirme başarısız', true); return; }
+                allBooks = resp.data.books;
+                dataVersion = resp.data.version;
+                // Dirty kitaplari sunucu verisinin uzerine yaz
+                for (var i = 0; i < allBooks.length; i++) {
+                    if (myChanges[allBooks[i].id]) allBooks[i] = myChanges[allBooks[i].id];
+                }
+                doSave(1);
+            } catch (e) { showSaveToast('Birleştirme başarısız', true); }
+        };
+        xhr2.onerror = function () { showSaveToast('Birleştirme başarısız: ağ hatası', true); };
+        xhr2.send('action=eit_load_books&nonce=' + ((window.eitAjax || {}).nonce || ''));
+    }
     window.eitSave = saveToServer;
+    window.eitMarkDirty = function (bookId) { if (bookId) dirtyBookIds[bookId] = true; };
     window.eitGetDataVersion = function () { return dataVersion; };
     window.eitSetDataVersion = function (v) { dataVersion = v; };
 
@@ -1762,6 +1796,7 @@
                         uploadImage(file, function (url) {
                             if (url) {
                                 notObj.resim = url;
+                                if (window.eitMarkDirty) window.eitMarkDirty(book.id);
                                 if (window.eitSave) window.eitSave();
                             }
                         });
@@ -1789,6 +1824,7 @@
             renderPopup();
             bindPopup();
             renderGrid(filtered);
+            if (window.eitMarkDirty) window.eitMarkDirty(book.id);
             if (window.eitSave) window.eitSave();
         }
 

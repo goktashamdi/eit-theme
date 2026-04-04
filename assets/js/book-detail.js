@@ -560,7 +560,7 @@
             });
             selectedIcerikler = {};
             render();
-            if (window.eitSave) window.eitSave();
+            if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
         });
 
         // Toplu secim: asama sec
@@ -575,7 +575,7 @@
             });
             selectedIcerikler = {};
             render();
-            if (window.eitSave) window.eitSave();
+            if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
         });
 
         // Toplu secim: temizle
@@ -593,7 +593,7 @@
                 var ic = b.uniteler[ui].icerikler[ii];
                 setDurum(ic, this.value);
                 render();
-                if (window.eitSave) window.eitSave();
+                if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
             });
         });
 
@@ -604,7 +604,7 @@
                 var ui = parseInt(this.dataset.ui), ii = parseInt(this.dataset.ii);
                 b.uniteler[ui].icerikler[ii].tur = this.value;
                 render();
-                if (window.eitSave) window.eitSave();
+                if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
             });
         });
 
@@ -645,7 +645,7 @@
                         setDurum(ic, '\u00dcretim Devam Ediyor');
                     }
                     render();
-                    if (window.eitSave) window.eitSave();
+                    if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
                 });
             });
         });
@@ -660,7 +660,7 @@
                     ic.gorev.durum = 'Tamamland\u0131';
                     ic.gorev.tamamlanmaTarihi = new Date().toISOString().split('T')[0];
                     render();
-                    if (window.eitSave) window.eitSave();
+                    if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
                 } else {
                     gorevAction(b.id, ui, ii, 'tamamla', function (ok) {
                         if (ok) { location.reload(); }
@@ -685,7 +685,7 @@
                 // Sonraki asamaya gec (setDurum ile tarih de kaydedilsin)
                 setDurum(ic, sonrakiAsama(ic.durum));
                 render();
-                if (window.eitSave) window.eitSave();
+                if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
             });
         });
 
@@ -724,12 +724,12 @@
                         ic.notlar.push(notObj);
                         openPanels[key] = true;
                         render();
-                        if (window.eitSave) window.eitSave();
+                        if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
                         // Arka planda sunucuya yukle, basariliysa URL'yi guncelle
                         uploadNoteImage(file, function (url) {
                             if (url) {
                                 notObj.resim = url;
-                                if (window.eitSave) window.eitSave();
+                                if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
                             }
                         });
                     };
@@ -738,7 +738,7 @@
                     ic.notlar.push(notObj);
                     delete openPanels[key];
                     render();
-                    if (window.eitSave) window.eitSave();
+                    if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
                 }
             });
         });
@@ -757,7 +757,7 @@
             btn.addEventListener('click', function () {
                 b.uniteler[parseInt(this.dataset.ui)].icerikler[parseInt(this.dataset.ii)].notlar.splice(parseInt(this.dataset.ni), 1);
                 render();
-                if (window.eitSave) window.eitSave();
+                if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
             });
         });
 
