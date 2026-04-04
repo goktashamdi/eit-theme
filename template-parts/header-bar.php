@@ -2,7 +2,7 @@
     <div class="header-left">
         <button class="mobile-toggle" id="mobileToggle">&#9776;</button>
         <h2 id="pageTitle">Genel Bak&#305;&#351;</h2>
-        <span class="header-version">v2.6</span>
+        <span class="header-version">v2.7</span>
         <span class="header-breadcrumb" id="breadcrumb"></span>
     </div>
     <div class="header-center" id="headerStats"></div>
