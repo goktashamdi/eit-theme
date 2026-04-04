@@ -1668,6 +1668,7 @@
     }
     window.eitSave = saveToServer;
     window.eitGetDataVersion = function () { return dataVersion; };
+    window.eitSetDataVersion = function (v) { dataVersion = v; };
 
     /* ─── Kitap Not Popup ─── */
     function showBookNotePopup(book, filtered) {

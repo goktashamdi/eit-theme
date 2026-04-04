@@ -225,7 +225,7 @@
                 <div class="login-logo-text"><span class="lt-edop">EDOP</span> <span class="lt-dijital">Dijital</span></div>
                 <div class="login-title">E-Takip</div>
                 <div class="login-subtitle">Dijital İçerik Yönetim Sistemi</div>
-                <span class="login-version">v2.5</span>
+                <span class="login-version">v2.5.1</span>
             </div>
 
             <div class="login-error" id="loginError"></div>

@@ -863,7 +863,10 @@
             if (xhr.status === 200) {
                 try {
                     var res = JSON.parse(xhr.responseText);
-                    if (res.success) { if (callback) callback(true, res.data); return; }
+                    if (res.success) {
+                        if (res.data && typeof res.data.version !== 'undefined' && window.eitSetDataVersion) window.eitSetDataVersion(res.data.version);
+                        if (callback) callback(true, res.data); return;
+                    }
                     alert('G\u00f6rev hatas\u0131: ' + (res.data || ''));
                 } catch (e) { alert('G\u00f6rev hatas\u0131'); }
             }
