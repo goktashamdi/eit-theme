@@ -108,12 +108,19 @@ function eit_handle_ajax_login() {
 
     if (is_wp_error($user)) {
         $code = $user->get_error_code();
+        $msg  = wp_strip_all_tags($user->get_error_message());
         if ($code === 'invalid_username' || $code === 'invalid_email') {
             wp_send_json_error('Kullanıcı bulunamadı.');
         } elseif ($code === 'incorrect_password') {
             wp_send_json_error('Şifre hatalı.');
+        } elseif ($code === 'empty_username' || $code === 'empty_password') {
+            wp_send_json_error('Kullanıcı adı ve şifre gerekli.');
+        } elseif ($code === 'too_many_retries' || $code === 'too_many_attempts') {
+            wp_send_json_error('Çok fazla deneme. Lütfen birkaç dakika sonra tekrar deneyin.');
         } else {
-            wp_send_json_error('Giriş başarısız.');
+            // Tum diger hatalar icin WP'nin gercek mesajini goster (debug icin)
+            error_log('[EIT login] code=' . $code . ' msg=' . $msg);
+            wp_send_json_error($msg ?: 'Giriş başarısız (' . $code . ')');
         }
     }
 
