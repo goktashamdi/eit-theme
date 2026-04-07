@@ -5,104 +5,6 @@
 
 defined('ABSPATH') || exit;
 
-/* ========== DIAGNOSTIC ENDPOINT (gecici — v2.7.3 icinde kaldirilacak) ========== */
-// Kullanim: https://admin.edop.com.tr/?eit_debug=ck2026
-add_action('init', function () {
-    if (empty($_GET['eit_debug']) || $_GET['eit_debug'] !== 'ck2026') return;
-
-    nocache_headers();
-    header('Content-Type: text/plain; charset=utf-8');
-
-    echo "=== EIT DEBUG ===\n";
-    echo "Time:          " . date('Y-m-d H:i:s') . "\n";
-    echo "PHP:           " . PHP_VERSION . "\n";
-    $theme = wp_get_theme();
-    echo "Theme:         " . $theme->get('Name') . " v" . $theme->get('Version') . "\n";
-
-    $f = get_template_directory() . '/assets/js/dashboard.js';
-    echo "\n-- dashboard.js --\n";
-    if (file_exists($f)) {
-        echo "Exists:        YES\n";
-        echo "Size:          " . filesize($f) . " bytes\n";
-        echo "Modified:      " . date('Y-m-d H:i:s', filemtime($f)) . "\n";
-        echo "SHA256:        " . hash_file('sha256', $f) . "\n";
-        $content = file_get_contents($f);
-        echo "mode: 'all':           " . (strpos($content, "mode: 'all'") !== false ? 'YES' : 'NO') . "\n";
-        echo "saveDashState count:   " . substr_count($content, 'saveDashState') . "\n";
-        echo "eitLastView count:     " . substr_count($content, 'eitLastView') . "\n";
-        echo "forceNextSave count:   " . substr_count($content, 'forceNextSave') . "\n";
-    } else {
-        echo "Exists:        NO (FILE MISSING!)\n";
-    }
-
-    echo "\n-- functions.php cache_version ($v) --\n";
-    $ff = get_template_directory() . '/functions.php';
-    if (file_exists($ff)) {
-        $fc = file_get_contents($ff);
-        if (preg_match("/\\\$v\\s*=\\s*'([^']+)'/", $fc, $m)) {
-            echo "on disk:       " . $m[1] . "\n";
-        } else {
-            echo "on disk:       NOT FOUND\n";
-        }
-    }
-
-    echo "\n-- OPcache --\n";
-    if (function_exists('opcache_get_status')) {
-        $s = @opcache_get_status(false);
-        if ($s && is_array($s)) {
-            echo "Enabled:       " . ($s['opcache_enabled'] ? 'YES' : 'NO') . "\n";
-            echo "Script count:  " . ($s['opcache_statistics']['num_cached_scripts'] ?? '-') . "\n";
-            // functions.php opcache'te mi?
-            $scripts = @opcache_get_status(true);
-            $fn_cached = false;
-            if ($scripts && isset($scripts['scripts'])) {
-                foreach ($scripts['scripts'] as $path => $info) {
-                    if (strpos($path, 'eit/functions.php') !== false) {
-                        echo "functions.php cached: YES\n";
-                        echo "  timestamp:   " . date('Y-m-d H:i:s', $info['timestamp']) . "\n";
-                        echo "  last_used:   " . date('Y-m-d H:i:s', $info['last_used_timestamp']) . "\n";
-                        $fn_cached = true;
-                        break;
-                    }
-                }
-            }
-            if (!$fn_cached) echo "functions.php cached: NO (or inaccessible)\n";
-        } else {
-            echo "Status:        not available\n";
-        }
-    } else {
-        echo "Available:     NO\n";
-    }
-
-    echo "\n-- Active plugins (cache-related) --\n";
-    $found = false;
-    foreach (get_option('active_plugins', []) as $p) {
-        if (stripos($p, 'cache') !== false || stripos($p, 'litespeed') !== false || stripos($p, 'rocket') !== false || stripos($p, 'optimize') !== false) {
-            echo "  $p\n";
-            $found = true;
-        }
-    }
-    if (!$found) echo "  (none)\n";
-
-    echo "\n-- wp_enqueue sim --\n";
-    do_action('wp_enqueue_scripts');
-    global $wp_scripts;
-    if (isset($wp_scripts->registered['eit-dashboard'])) {
-        $sc = $wp_scripts->registered['eit-dashboard'];
-        echo "src:           " . $sc->src . "\n";
-        echo "ver:           " . $sc->ver . "\n";
-    } else {
-        echo "eit-dashboard handle NOT registered\n";
-    }
-
-    echo "\n-- Cache constants --\n";
-    echo "DONOTCACHEPAGE:       " . (defined('DONOTCACHEPAGE') ? 'YES' : 'no') . "\n";
-    echo "LITESPEED_DISABLE_ALL:" . (defined('LITESPEED_DISABLE_ALL') ? 'YES' : 'no') . "\n";
-    echo "WP_CACHE:             " . (defined('WP_CACHE') && WP_CACHE ? 'YES' : 'no') . "\n";
-
-    exit;
-});
-
 /* ========== THEME SETUP ========== */
 function eit_theme_setup() {
     add_theme_support('title-tag');
@@ -290,7 +192,7 @@ function eit_enqueue_assets() {
         [], null
     );
 
-    $v = '20260407h';
+    $v = '20260407i';
     wp_enqueue_style('eit-style', get_stylesheet_uri(), ['google-fonts-inter'], $v);
     wp_enqueue_script('eit-dashboard', get_template_directory_uri() . '/assets/js/dashboard.js', [], $v, true);
     wp_enqueue_script('eit-admin-panel', get_template_directory_uri() . '/assets/js/admin-panel.js', ['eit-dashboard'], $v, true);

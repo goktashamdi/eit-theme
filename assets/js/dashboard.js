@@ -1987,8 +1987,12 @@
     // Restore fonksiyonu — sessionStorage'daki view'i geri getirir
     // Detail ve dashboard (filtreli) view'lari icin allBooks gerekli,
     // o yuzden books fetch success'inde de cagriliyor
+    var restoreDone = false;
     function eitRestoreLastView() {
-        if (!historyReady) return;
+        if (restoreDone) return; // idempotent — birden fazla cagrilsa da bir kere calisir
+        // Not: historyReady kontrolu KALDIRILDI — sunucu hizliysa fetch 300ms timeout'tan
+        // once basarili donuyor, eski kontrol erken return ile restore'u engelliyordu.
+        // Icerideki her history fonksiyonu (eitPushState) kendi kontrolunu yapiyor.
         var saved = ssGet();
         if (!saved || !saved.view) return;
         if (saved.view === 'dashboard') {
@@ -1996,6 +2000,7 @@
             if (saved.data && saved.data.mode === 'all') {
                 if (!allBooks || allBooks.length === 0) return; // veri yuklenmemis
                 showAllBooks();
+                restoreDone = true;
                 return;
             }
             // Filtreli dashboard restore: Havuzda/Islemde/Pasif gibi pill filtreleri,
@@ -2007,30 +2012,32 @@
             if ($search && searchQuery) $search.value = searchQuery;
             buildSidebar();
             render();
+            restoreDone = true;
             return;
         }
         if (saved.view === 'detail' && saved.data) {
             if (!allBooks || allBooks.length === 0) return; // henuz yuklenmedi, sonra tekrar denenecek
             var book = allBooks.find(function (b) { return b.id === saved.data; });
-            if (book && window.eitOpenDetail) window.eitOpenDetail(book);
-            else ssClear(); // kitap silinmis veya bulunamadi, temizle
+            if (book && window.eitOpenDetail) { window.eitOpenDetail(book); restoreDone = true; }
+            else { ssClear(); restoreDone = true; } // kitap silinmis veya bulunamadi, temizle
         } else if (saved.view === 'admin') {
             var abtn = document.getElementById('adminPanelBtn');
-            if (abtn) abtn.click();
+            if (abtn) { abtn.click(); restoreDone = true; }
         } else if (saved.view === 'reports') {
             var rbtn = document.getElementById('reportsBtn');
-            if (rbtn) rbtn.click();
+            if (rbtn) { rbtn.click(); restoreDone = true; }
         } else if (saved.view === 'gorevler') {
             var gbtn = document.getElementById('gorevlerBtn');
-            if (gbtn) gbtn.click();
+            if (gbtn) { gbtn.click(); restoreDone = true; }
         } else if (saved.view === 'criteria') {
             var cbtn = document.getElementById('criteriaHeaderBtn');
-            if (cbtn) cbtn.click();
+            if (cbtn) { cbtn.click(); restoreDone = true; }
         } else if (saved.view === 'eicerik') {
             var ebtn = document.getElementById('eicerikTablosuBtn');
-            if (ebtn) ebtn.click();
+            if (ebtn) { ebtn.click(); restoreDone = true; }
         } else {
             ssClear(); // bilinmeyen view, temizle
+            restoreDone = true;
         }
     }
     window.eitRestoreLastView = eitRestoreLastView;
