@@ -67,6 +67,11 @@ add_action('init', 'eit_register_roles');
 /* ========== CUSTOM LOGIN PAGE ========== */
 function eit_require_login() {
     if (!is_user_logged_in() && !is_admin()) {
+        // LiteSpeed/WP Rocket/W3TC: bu sayfayi cache'leme — nonce stale olur, login bozulur
+        if (!defined('DONOTCACHEPAGE'))   define('DONOTCACHEPAGE', true);
+        if (!defined('DONOTCACHEOBJECT')) define('DONOTCACHEOBJECT', true);
+        if (!defined('DONOTCACHEDB'))     define('DONOTCACHEDB', true);
+        nocache_headers();
         include get_template_directory() . '/template-parts/login.php';
         exit;
     }
@@ -92,7 +97,10 @@ add_action('login_init', function () {
 // AJAX login handler
 add_action('wp_ajax_nopriv_eit_ajax_login', 'eit_handle_ajax_login');
 function eit_handle_ajax_login() {
-    check_ajax_referer('eit_login_nonce', 'eit_login_nonce');
+    // Nonce graceful fail — cache plugin'i sayfayi cache'lediyse nonce stale olabilir
+    if (!check_ajax_referer('eit_login_nonce', 'eit_login_nonce', false)) {
+        wp_send_json_error('Oturum süresi doldu. Lütfen sayfayı yenileyip tekrar deneyin.');
+    }
 
     $creds = [
         'user_login'    => sanitize_text_field($_POST['log'] ?? ''),
@@ -130,7 +138,9 @@ function eit_handle_ajax_login() {
 // AJAX lost password handler
 add_action('wp_ajax_nopriv_eit_ajax_lostpassword', 'eit_handle_ajax_lostpassword');
 function eit_handle_ajax_lostpassword() {
-    check_ajax_referer('eit_login_nonce', 'eit_login_nonce');
+    if (!check_ajax_referer('eit_login_nonce', 'eit_login_nonce', false)) {
+        wp_send_json_error('Oturum süresi doldu. Lütfen sayfayı yenileyip tekrar deneyin.');
+    }
 
     $user_login = sanitize_text_field($_POST['user_login'] ?? '');
     if (empty($user_login)) wp_send_json_error('Kullanıcı adı veya e-posta gerekli.');
