@@ -744,6 +744,8 @@
                 renderGrid(filtered);
             }
         }
+        // F5 sonrasi geri yukleyebilmek icin dashboard sub-state'i sakla
+        saveDashState();
     }
 
     /* ─── Dashboard Overview (dynamic, draggable) ─── */
@@ -1074,6 +1076,8 @@
         buildSidebar();
         // Grid'i tum kitaplarla goster
         renderGrid(sortBooks(allBooks));
+        // F5 persistence: filtreler temizlendi, dashboard state'i de temizle
+        saveDashState();
     }
 
     function renderHeaderStats(total, bekleniyor, islemde, askida, pasif, onaylanan) {
@@ -1891,6 +1895,19 @@
     function ssClear() {
         try { sessionStorage.removeItem(SS_KEY); } catch (e) {}
     }
+    // Dashboard sub-state (filtreler + arama) sessionStorage'a kaydet
+    // Boylece F5 sonrasi Havuzda/Islemde/Pasif gibi filtre durumlarinda da kullanici ayni yerde kalir
+    function saveDashState() {
+        if (!historyReady) return; // initial load sirasinda kaydetme (restore'u ezmesin)
+        var hasFilter = Object.keys(activeFilters).length > 0 || (searchQuery && searchQuery.length);
+        if (hasFilter) {
+            ssSet('dashboard', { filters: activeFilters, search: searchQuery });
+        } else {
+            // Filtre kalmadi — eski dashboard kayidini temizle
+            var saved = ssGet();
+            if (saved && saved.view === 'dashboard') ssClear();
+        }
+    }
     function eitPushState(view, data) {
         if (!historyReady || navigatingFromPopstate) return;
         history.pushState({ view: view, data: data || null }, '', location.pathname + location.search);
@@ -1903,7 +1920,9 @@
         var dp = document.getElementById('detailPage');
         if (dp) { dp.style.display = 'none'; dp.innerHTML = ''; }
         if (window.eitRefresh) window.eitRefresh();
-        ssClear(); // Dashboard'dayken sessionStorage temizlensin
+        // Dashboard'a doncekaydedilmis spa view'i temizle. Filtre durumu render() icinde yeniden yazilir.
+        var saved = ssGet();
+        if (saved && saved.view !== 'dashboard') ssClear();
     }
 
     window.addEventListener('popstate', function (e) {
@@ -1955,20 +1974,34 @@
         historyReady = true;
 
         // allBooks gerektirmeyen view'lar icin hemen restore deneyebiliriz.
-        // Detail icin allBooks'un yuklenmis olmasini bekleyelim — fetch success
-        // callback'i icinde window.eitRestoreLastView() cagriliyor (asagida tanimli).
+        // Detail ve filtreli dashboard icin allBooks'un yuklenmis olmasini bekleyelim
+        // — fetch success callback'i icinde window.eitRestoreLastView() cagriliyor.
         var saved = ssGet();
-        if (!saved || !saved.view || saved.view === 'dashboard' || saved.view === 'detail') return;
-        // Detail disindaki view'lar dogrudan restore edilebilir (button click)
+        if (!saved || !saved.view) return;
+        if (saved.view === 'detail' || saved.view === 'dashboard') return;
+        // Detail/dashboard disindaki view'lar dogrudan restore edilebilir (button click)
         eitRestoreLastView();
     }, 300);
 
     // Restore fonksiyonu — sessionStorage'daki view'i geri getirir
-    // Detail view icin allBooks gerekli, o yuzden books fetch success'inde de cagriliyor
+    // Detail ve dashboard (filtreli) view'lari icin allBooks gerekli,
+    // o yuzden books fetch success'inde de cagriliyor
     function eitRestoreLastView() {
         if (!historyReady) return;
         var saved = ssGet();
-        if (!saved || !saved.view || saved.view === 'dashboard') return;
+        if (!saved || !saved.view) return;
+        if (saved.view === 'dashboard') {
+            // Filtreli dashboard restore: Havuzda/Islemde/Pasif gibi pill filtreleri,
+            // sidebar filtreleri ve arama state'i geri getirilir
+            if (!saved.data || (!saved.data.filters && !saved.data.search)) return;
+            if (!allBooks || allBooks.length === 0) return; // veri yuklenmemis, sonra tekrar denenecek
+            activeFilters = saved.data.filters || {};
+            searchQuery = saved.data.search || '';
+            if ($search && searchQuery) $search.value = searchQuery;
+            buildSidebar();
+            render();
+            return;
+        }
         if (saved.view === 'detail' && saved.data) {
             if (!allBooks || allBooks.length === 0) return; // henuz yuklenmedi, sonra tekrar denenecek
             var book = allBooks.find(function (b) { return b.id === saved.data; });
