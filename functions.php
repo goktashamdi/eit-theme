@@ -67,10 +67,16 @@ add_action('init', 'eit_register_roles');
 /* ========== CUSTOM LOGIN PAGE ========== */
 function eit_require_login() {
     if (!is_user_logged_in() && !is_admin()) {
-        // LiteSpeed/WP Rocket/W3TC: bu sayfayi cache'leme — nonce stale olur, login bozulur
+        // LiteSpeed Cache: bu istek icin tum ozellikleri (page cache, JS/CSS combine,
+        // defer, image opt) devre disi birak — login formunu bozmasinlar
+        if (!defined('LITESPEED_DISABLE_ALL')) define('LITESPEED_DISABLE_ALL', true);
+        // WP Rocket / W3TC / generic cache plugin'leri
         if (!defined('DONOTCACHEPAGE'))   define('DONOTCACHEPAGE', true);
         if (!defined('DONOTCACHEOBJECT')) define('DONOTCACHEOBJECT', true);
         if (!defined('DONOTCACHEDB'))     define('DONOTCACHEDB', true);
+        // LSCWP filter hook'lari (constant'a ek savunma katmani)
+        do_action('litespeed_control_set_nocache', 'EIT login page');
+        do_action('litespeed_optimize_no_combine');
         nocache_headers();
         include get_template_directory() . '/template-parts/login.php';
         exit;
