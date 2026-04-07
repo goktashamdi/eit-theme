@@ -1076,8 +1076,9 @@
         buildSidebar();
         // Grid'i tum kitaplarla goster
         renderGrid(sortBooks(allBooks));
-        // F5 persistence: filtreler temizlendi, dashboard state'i de temizle
-        saveDashState();
+        // F5 persistence: 'Tum Kitaplar' modu — yenilemede de bu sayfa kalsin
+        // (Genel Bakis'tan ayri bir dashboard alt-state'i)
+        if (historyReady) ssSet('dashboard', { mode: 'all' });
     }
 
     function renderHeaderStats(total, bekleniyor, islemde, askida, pasif, onaylanan) {
@@ -1991,6 +1992,12 @@
         var saved = ssGet();
         if (!saved || !saved.view) return;
         if (saved.view === 'dashboard') {
+            // 'Tum Kitaplar' modu (Toplam pill'ine tiklanmis) — F5 sonrasi grid'i geri getir
+            if (saved.data && saved.data.mode === 'all') {
+                if (!allBooks || allBooks.length === 0) return; // veri yuklenmemis
+                showAllBooks();
+                return;
+            }
             // Filtreli dashboard restore: Havuzda/Islemde/Pasif gibi pill filtreleri,
             // sidebar filtreleri ve arama state'i geri getirilir
             if (!saved.data || (!saved.data.filters && !saved.data.search)) return;
