@@ -266,6 +266,8 @@
                     };
                     buildSidebar();
                     render();
+                    // F5 sonrasi son view'i (ozellikle detail) restore et — allBooks artik dolu
+                    setTimeout(function () { if (window.eitRestoreLastView) window.eitRestoreLastView(); }, 50);
                     // Migration yapildiysa kaydet
                     if (needsMigrate) setTimeout(function () { saveToServer(true); }, 500);
 
@@ -1053,9 +1055,13 @@
         var dp = document.getElementById('detailPage');
         if (dp) { dp.style.display = 'none'; dp.innerHTML = ''; }
         closeInlineViews();
+        // Aktif filtreleri temizle ki header stats pill'lerinden 'aktif' state kalksin
+        activeFilters = {};
+        searchQuery = '';
         document.getElementById('bookGrid').style.display = '';
-        $title.textContent = 'T\u00fcm Kitaplar (' + allBooks.length + ')';
-        renderGrid(sortBooks(allBooks));
+        // render() butun UI'i (header stats + sidebar + grid) yeniden cizer
+        buildSidebar();
+        render();
     }
 
     function renderHeaderStats(total, bekleniyor, islemde, askida, pasif, onaylanan) {
@@ -1931,21 +1937,31 @@
 
     // Ilk sayfa yuklemesinde guard state + dashboard state kaydet
     // Boylece geri basildiginda wp-admin'e gitmez, dashboard'da kalir
-    // F5 sonrasi sessionStorage'daki son view'i geri yukle
     setTimeout(function () {
         history.replaceState({ view: 'guard' }, '', location.pathname + location.search);
         history.pushState({ view: 'dashboard' }, '', location.pathname + location.search);
         historyReady = true;
 
-        // F5 / yenileme persistence: sessionStorage'da son view varsa restore et
+        // allBooks gerektirmeyen view'lar icin hemen restore deneyebiliriz.
+        // Detail icin allBooks'un yuklenmis olmasini bekleyelim — fetch success
+        // callback'i icinde window.eitRestoreLastView() cagriliyor (asagida tanimli).
+        var saved = ssGet();
+        if (!saved || !saved.view || saved.view === 'dashboard' || saved.view === 'detail') return;
+        // Detail disindaki view'lar dogrudan restore edilebilir (button click)
+        eitRestoreLastView();
+    }, 300);
+
+    // Restore fonksiyonu — sessionStorage'daki view'i geri getirir
+    // Detail view icin allBooks gerekli, o yuzden books fetch success'inde de cagriliyor
+    function eitRestoreLastView() {
+        if (!historyReady) return;
         var saved = ssGet();
         if (!saved || !saved.view || saved.view === 'dashboard') return;
-
-        // Restore — view tipine gore ilgili aksiyonu tetikle
         if (saved.view === 'detail' && saved.data) {
+            if (!allBooks || allBooks.length === 0) return; // henuz yuklenmedi, sonra tekrar denenecek
             var book = allBooks.find(function (b) { return b.id === saved.data; });
             if (book && window.eitOpenDetail) window.eitOpenDetail(book);
-            else ssClear(); // kitap silinmis olabilir, temizle
+            else ssClear(); // kitap silinmis veya bulunamadi, temizle
         } else if (saved.view === 'admin') {
             var abtn = document.getElementById('adminPanelBtn');
             if (abtn) abtn.click();
@@ -1964,6 +1980,7 @@
         } else {
             ssClear(); // bilinmeyen view, temizle
         }
-    }, 300);
+    }
+    window.eitRestoreLastView = eitRestoreLastView;
 
 })();
