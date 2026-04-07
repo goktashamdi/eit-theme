@@ -1056,12 +1056,24 @@
         if (dp) { dp.style.display = 'none'; dp.innerHTML = ''; }
         closeInlineViews();
         // Aktif filtreleri temizle ki header stats pill'lerinden 'aktif' state kalksin
+        // (render() cagiramayiz cunku hasFilter=false olunca overview'a yonlendirir)
         activeFilters = {};
         searchQuery = '';
         document.getElementById('bookGrid').style.display = '';
-        // render() butun UI'i (header stats + sidebar + grid) yeniden cizer
+        if ($empty) $empty.style.display = 'none';
+        if ($pills) $pills.style.display = 'none';
+        if ($info) $info.style.display = 'none';
+        $title.textContent = 'T\u00fcm Kitaplar (' + allBooks.length + ')';
+        // Header stats'i manuel guncelle ki pill'lerden 'aktif' state kalksin
+        var _aktif = activeBooks();
+        var _dc = { 'Havuzda': 0, '\u0130\u015flemde': 0, 'Ask\u0131da': 0, 'Pasif': 0 };
+        _aktif.forEach(function (b) { var d = b.durumu || '\u0130\u015flemde'; _dc[d] = (_dc[d] || 0) + 1; });
+        var _onaylanan = allBooks.length - _aktif.length;
+        renderHeaderStats(_aktif.length, _dc['Havuzda'], _dc['\u0130\u015flemde'], _dc['Ask\u0131da'], _dc['Pasif'], _onaylanan);
+        // Sidebar'i da yenile (filtre state'i sifirlandi)
         buildSidebar();
-        render();
+        // Grid'i tum kitaplarla goster
+        renderGrid(sortBooks(allBooks));
     }
 
     function renderHeaderStats(total, bekleniyor, islemde, askida, pasif, onaylanan) {
