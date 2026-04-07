@@ -1860,12 +1860,23 @@
         document.getElementById('bnText').focus();
     }
 
-    /* ─── Browser History (SPA back/forward) ─── */
+    /* ─── Browser History (SPA back/forward + F5 refresh persistence) ─── */
     var historyReady = false;
     var navigatingFromPopstate = false;
+    var SS_KEY = 'eitLastView'; // sessionStorage anahtari (tab'a ozel — yeni tab dashboard acar)
+    function ssSet(view, data) {
+        try { sessionStorage.setItem(SS_KEY, JSON.stringify({ view: view, data: data || null })); } catch (e) {}
+    }
+    function ssGet() {
+        try { var s = sessionStorage.getItem(SS_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; }
+    }
+    function ssClear() {
+        try { sessionStorage.removeItem(SS_KEY); } catch (e) {}
+    }
     function eitPushState(view, data) {
         if (!historyReady || navigatingFromPopstate) return;
         history.pushState({ view: view, data: data || null }, '', location.pathname + location.search);
+        ssSet(view, data); // F5 sonrasi geri yukleyebilmek icin sakla
     }
     window.eitPushState = eitPushState;
 
@@ -1874,6 +1885,7 @@
         var dp = document.getElementById('detailPage');
         if (dp) { dp.style.display = 'none'; dp.innerHTML = ''; }
         if (window.eitRefresh) window.eitRefresh();
+        ssClear(); // Dashboard'dayken sessionStorage temizlensin
     }
 
     window.addEventListener('popstate', function (e) {
@@ -1919,10 +1931,39 @@
 
     // Ilk sayfa yuklemesinde guard state + dashboard state kaydet
     // Boylece geri basildiginda wp-admin'e gitmez, dashboard'da kalir
+    // F5 sonrasi sessionStorage'daki son view'i geri yukle
     setTimeout(function () {
         history.replaceState({ view: 'guard' }, '', location.pathname + location.search);
         history.pushState({ view: 'dashboard' }, '', location.pathname + location.search);
         historyReady = true;
+
+        // F5 / yenileme persistence: sessionStorage'da son view varsa restore et
+        var saved = ssGet();
+        if (!saved || !saved.view || saved.view === 'dashboard') return;
+
+        // Restore — view tipine gore ilgili aksiyonu tetikle
+        if (saved.view === 'detail' && saved.data) {
+            var book = allBooks.find(function (b) { return b.id === saved.data; });
+            if (book && window.eitOpenDetail) window.eitOpenDetail(book);
+            else ssClear(); // kitap silinmis olabilir, temizle
+        } else if (saved.view === 'admin') {
+            var abtn = document.getElementById('adminPanelBtn');
+            if (abtn) abtn.click();
+        } else if (saved.view === 'reports') {
+            var rbtn = document.getElementById('reportsBtn');
+            if (rbtn) rbtn.click();
+        } else if (saved.view === 'gorevler') {
+            var gbtn = document.getElementById('gorevlerBtn');
+            if (gbtn) gbtn.click();
+        } else if (saved.view === 'criteria') {
+            var cbtn = document.getElementById('criteriaHeaderBtn');
+            if (cbtn) cbtn.click();
+        } else if (saved.view === 'eicerik') {
+            var ebtn = document.getElementById('eicerikTablosuBtn');
+            if (ebtn) ebtn.click();
+        } else {
+            ssClear(); // bilinmeyen view, temizle
+        }
     }, 300);
 
 })();
