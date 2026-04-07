@@ -169,7 +169,7 @@ function eit_enqueue_assets() {
         [], null
     );
 
-    $v = '20260404b';
+    $v = '20260407a';
     wp_enqueue_style('eit-style', get_stylesheet_uri(), ['google-fonts-inter'], $v);
     wp_enqueue_script('eit-dashboard', get_template_directory_uri() . '/assets/js/dashboard.js', [], $v, true);
     wp_enqueue_script('eit-admin-panel', get_template_directory_uri() . '/assets/js/admin-panel.js', ['eit-dashboard'], $v, true);

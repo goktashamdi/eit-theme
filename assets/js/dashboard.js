@@ -267,7 +267,7 @@
                     buildSidebar();
                     render();
                     // Migration yapildiysa kaydet
-                    if (needsMigrate) setTimeout(function () { saveToServer(); }, 500);
+                    if (needsMigrate) setTimeout(function () { saveToServer(true); }, 500);
 
                     // Gorev notification + badge
                     setTimeout(function () {
@@ -1330,6 +1330,7 @@
         if (!book.ders) { alert('Ders se\u00e7imi zorunlu'); return; }
         if (isNew) allBooks.push(book);
 
+        dirtyBookIds[book.id] = true;
         editingId = null;
         buildSidebar();
         render();
@@ -1574,6 +1575,7 @@
             for (var i = 0; i < allBooks.length; i++) {
                 if (allBooks[i].id === bookId) {
                     allBooks[i].durumu = this.checked ? 'TTKB Onay\u0131' : '\u0130\u015flemde';
+                    dirtyBookIds[bookId] = true;
                     break;
                 }
             }
@@ -1629,6 +1631,7 @@
 
     /* ─── Auto-save to server ─── */
     var saveTimer = null;
+    var forceNextSave = false;
     window.eitShowToast = showSaveToast;
     function showSaveToast(msg, isError) {
         var old = document.getElementById('eitSaveToast');
@@ -1641,8 +1644,9 @@
         requestAnimationFrame(function () { t.style.opacity = '1'; });
         setTimeout(function () { t.style.opacity = '0'; setTimeout(function () { t.remove(); }, 300); }, 3000);
     }
-    function saveToServer() {
-        if (Object.keys(dirtyBookIds).length === 0) return; // degisiklik yoksa kaydetme
+    function saveToServer(force) {
+        if (force) forceNextSave = true;
+        if (!forceNextSave && Object.keys(dirtyBookIds).length === 0) return; // degisiklik yoksa kaydetme
         if (saveTimer) clearTimeout(saveTimer);
         saveTimer = setTimeout(function () { doSave(0); }, 500);
     }
@@ -1658,6 +1662,7 @@
                     if (res.success) {
                         if (typeof res.data.version !== 'undefined') dataVersion = res.data.version;
                         dirtyBookIds = {};
+                        forceNextSave = false;
                         showSaveToast('Kaydedildi', false);
                     } else if (typeof res.data === 'string' && res.data.indexOf('güncellendi') !== -1 && attempt < 1) {
                         mergeAndRetry();
@@ -1707,6 +1712,7 @@
         xhr2.send('action=eit_load_books&nonce=' + ((window.eitAjax || {}).nonce || ''));
     }
     window.eitSave = saveToServer;
+    window.eitForceSave = function () { saveToServer(true); };
     window.eitMarkDirty = function (bookId) { if (bookId) dirtyBookIds[bookId] = true; };
     window.eitGetDataVersion = function () { return dataVersion; };
     window.eitSetDataVersion = function (v) { dataVersion = v; };

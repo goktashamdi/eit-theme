@@ -34,7 +34,7 @@
     /* ─── Helpers ─── */
     function books() { return window.eitAllBooks || []; }
     function atananlar() { return window.eitAllAtananlar || []; }
-    function refresh() { if (window.eitRefresh) window.eitRefresh(); }
+    function refresh() { if (window.eitRefresh) window.eitRefresh(); if (window.eitForceSave) window.eitForceSave(); }
     function esc(s) { if (s === null || s === undefined) return ''; var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML.replace(/"/g, '&quot;'); }
     function escAttr(s) { return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;'); }
 
