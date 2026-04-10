@@ -357,7 +357,7 @@
                 var hasGorev = !!gorev.atananId;
                 var gorevTamamlandi = hasGorev && gorev.durum === 'Tamamland\u0131';
                 var isOverdue = hasGorev && gorev.durum !== 'Tamamland\u0131' && gorev.sonTarih && new Date() > new Date(gorev.sonTarih);
-                var isMyGorev = hasGorev && gorev.atananId === ((window.eitUser || {}).id || 0);
+                var isMyGorev = hasGorev && gorev.atananId === (parseInt((window.eitUser || {}).id) || 0);
 
                 var tipClass = 'dp-type-eicerik';
                 var tipLabel = 'E-\u0130\u00e7erik';
@@ -457,9 +457,16 @@
 
                 // 6) Gorev alani (tek div icinde)
                 h += '<div class="ic-row-gorev">';
+                var hasGecmis = ic.gorevGecmisi && ic.gorevGecmisi.length > 0;
                 if (canAssign && !isTeslim && gorevAtanabilirAsamalar.indexOf(currentDurum) > -1 && !hasGorev) {
                     var wpUsers = window.eitWpUsers || [];
-                    h += '<select class="ic-atanan-select" data-ui="' + ui + '" data-ii="' + ii + '">';
+                    if (hasGecmis) {
+                        // Onceki gorev tamamlanmis — kompakt buton goster, tiklaninca select acilsin
+                        h += '<button class="gorev-ata-compact-btn" data-ui="' + ui + '" data-ii="' + ii + '">G\u00f6rev Ata</button>';
+                        h += '<select class="ic-atanan-select" data-ui="' + ui + '" data-ii="' + ii + '" style="display:none">';
+                    } else {
+                        h += '<select class="ic-atanan-select" data-ui="' + ui + '" data-ii="' + ii + '">';
+                    }
                     h += '<option value="">G\u00f6rev Ata...</option>';
                     wpUsers.forEach(function (u) {
                         if (u.role === 'admin') return;
@@ -664,7 +671,7 @@
                     sonTarih: deadlineStr,
                     tamamlanmaTarihi: null,
                     atayan: (window.eitUser || {}).name || '',
-                    atayanId: (window.eitUser || {}).id || 0
+                    atayanId: parseInt((window.eitUser || {}).id) || 0
                 };
                 // Uretime Baslandi → Uretim Devam Ediyor
                 if (asamaAdi === '\u00dcretime Ba\u015fland\u0131') {
@@ -765,7 +772,7 @@
                         sonTarih: deadline.toISOString().split('T')[0],
                         tamamlanmaTarihi: null,
                         atayan: (window.eitUser || {}).name || '',
-                        atayanId: (window.eitUser || {}).id || 0
+                        atayanId: parseInt((window.eitUser || {}).id) || 0
                     };
                     // Uretime Baslandi → Uretim Devam Ediyor (tarih de kaydedilsin)
                     if (asamaAdi === '\u00dcretime Ba\u015fland\u0131') {
@@ -816,6 +823,19 @@
             });
         });
 
+        // Gorev: Kompakt "Görev Ata" butonu (onay sonrasi gecmisi olan icerikler)
+        $page.querySelectorAll('.gorev-ata-compact-btn').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                this.style.display = 'none';
+                var sel = this.nextElementSibling;
+                if (sel && sel.classList.contains('ic-atanan-select')) {
+                    sel.style.display = '';
+                    sel.focus();
+                }
+            });
+        });
+
         // Gorev: Kisi degistir
         $page.querySelectorAll('.gorev-degistir-btn').forEach(function (btn) {
             btn.addEventListener('click', function (e) {
@@ -858,7 +878,7 @@
                             sonTarih: deadline.toISOString().split('T')[0],
                             tamamlanmaTarihi: null,
                             atayan: (window.eitUser || {}).name || '',
-                            atayanId: (window.eitUser || {}).id || 0
+                            atayanId: parseInt((window.eitUser || {}).id) || 0
                         };
                         render();
                         if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
@@ -906,12 +926,21 @@
                         ic.notlar.push(notObj);
                         openPanels[key] = true;
                         render();
-                        if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+                        if (canFullSave()) {
+                            if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+                        }
                         // Arka planda sunucuya yukle, basariliysa URL'yi guncelle
                         uploadNoteImage(file, function (url) {
                             if (url) {
                                 notObj.resim = url;
-                                if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+                                if (canFullSave()) {
+                                    if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+                                } else {
+                                    saveNoteViaAjax(b.id, ui, ii, 'add', { note_text: text, note_image: url });
+                                }
+                            } else if (!canFullSave()) {
+                                // Upload basarisiz, resim olmadan kaydet
+                                saveNoteViaAjax(b.id, ui, ii, 'add', { note_text: text });
                             }
                         });
                     };
@@ -920,7 +949,11 @@
                     ic.notlar.push(notObj);
                     delete openPanels[key];
                     render();
-                    if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+                    if (canFullSave()) {
+                        if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+                    } else {
+                        saveNoteViaAjax(b.id, ui, ii, 'add', { note_text: text });
+                    }
                 }
             });
         });
@@ -937,9 +970,14 @@
         // Delete note
         $page.querySelectorAll('.ic-note-del').forEach(function (btn) {
             btn.addEventListener('click', function () {
-                b.uniteler[parseInt(this.dataset.ui)].icerikler[parseInt(this.dataset.ii)].notlar.splice(parseInt(this.dataset.ni), 1);
+                var delUi = parseInt(this.dataset.ui), delIi = parseInt(this.dataset.ii), delNi = parseInt(this.dataset.ni);
+                b.uniteler[delUi].icerikler[delIi].notlar.splice(delNi, 1);
                 render();
-                if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+                if (canFullSave()) {
+                    if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+                } else {
+                    saveNoteViaAjax(b.id, delUi, delIi, 'delete', { note_index: delNi });
+                }
             });
         });
 
@@ -1065,6 +1103,36 @@
     function canFullSave() {
         var caps = window.eitUserCaps || {};
         return caps.eit_edit || caps.eit_manage;
+    }
+
+    /* ─── Not kaydet (eit_view yeterli) ─── */
+    function saveNoteViaAjax(bookId, ui, ii, op, extra, callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', (window.eitAjax || {}).url || '/wp-admin/admin-ajax.php');
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.onload = function () {
+            if (xhr.status === 200) {
+                try {
+                    var res = JSON.parse(xhr.responseText);
+                    if (res.success) {
+                        if (res.data && typeof res.data.version !== 'undefined' && window.eitSetDataVersion) window.eitSetDataVersion(res.data.version);
+                        if (callback) callback(true);
+                        return;
+                    }
+                    alert('Not kaydetme hatas\u0131: ' + (res.data || ''));
+                } catch (e) { alert('Not kaydetme hatas\u0131'); }
+            }
+            if (callback) callback(false);
+        };
+        xhr.onerror = function () { alert('A\u011f hatas\u0131'); if (callback) callback(false); };
+        var params = 'action=eit_save_note&nonce=' + ((window.eitAjax || {}).nonce || '') +
+            '&book_id=' + encodeURIComponent(bookId) + '&ui=' + ui + '&ii=' + ii + '&note_op=' + op;
+        if (extra) {
+            Object.keys(extra).forEach(function (k) {
+                params += '&' + k + '=' + encodeURIComponent(extra[k]);
+            });
+        }
+        xhr.send(params);
     }
 
     /* ─── Image Upload Helper ─── */

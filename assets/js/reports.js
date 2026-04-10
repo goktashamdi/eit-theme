@@ -17,7 +17,9 @@
         { key: 'sorumlu',  label: 'Sorumlu Bazl\u0131 Rapor',    icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' },
         { key: 'notlar',   label: 'Notlar Raporu',               icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' },
         { key: 'yayinevi', label: 'Yay\u0131nevi Raporu',        icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' },
-        { key: 'gelmedi',  label: '\u0130\u00e7erik Gelmedi',        icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' }
+        { key: 'gelmedi',  label: '\u0130\u00e7erik Gelmedi',        icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' },
+        { key: 'gorevKisi', label: 'Ki\u015fi Bazl\u0131 G\u00f6rev', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>' },
+        { key: 'gorevBazli', label: 'G\u00f6rev Bazl\u0131 Rapor',  icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' }
     ];
 
     // Which filters each report type supports
@@ -29,7 +31,9 @@
         sorumlu:  ['ders', 'sinif', 'okul', 'yayinevi', 'atanan', 'icDurum'],
         notlar:   ['ders', 'sinif', 'okul', 'yayinevi', 'etiket'],
         yayinevi: ['ders', 'sinif', 'okul', 'durumu', 'icDurum'],
-        gelmedi:  ['ders', 'sinif', 'okul', 'yayinevi']
+        gelmedi:  ['ders', 'sinif', 'okul', 'yayinevi'],
+        gorevKisi: ['ders', 'sinif', 'okul', 'atanan'],
+        gorevBazli: ['ders', 'sinif', 'okul', 'atanan']
     };
 
     var filterLabels = {
@@ -58,6 +62,7 @@
                 var g = ic.gorev;
                 if (g && g.atananAd) vals[g.atananAd] = 1;
                 else if (ic.atanan) vals[ic.atanan] = 1;
+                (ic.gorevGecmisi || []).forEach(function (gg) { if (gg.atananAd) vals[gg.atananAd] = 1; });
             }); }); });
             (window.eitAllAtananlar || []).forEach(function (a) { if (a) vals[a] = 1; });
         } else if (field === 'icDurum') {
@@ -268,6 +273,8 @@
             case 'notlar': return renderNotlar(bk);
             case 'yayinevi': return renderYayinevi(bk);
             case 'gelmedi': return renderGelmedi(bk);
+            case 'gorevKisi': return renderGorevKisi(bk);
+            case 'gorevBazli': return renderGorevBazli(bk);
             default: return '';
         }
     }
@@ -792,6 +799,194 @@
         return h;
     }
 
+    /* ═══════════════════════════════════════════
+       9. KISI BAZLI GOREV RAPORU
+    ═══════════════════════════════════════════ */
+    function collectGorevData(bk) {
+        var fAtanan = rptFilters.atanan || [];
+        var rows = [];
+        bk.forEach(function (b) {
+            if (!b.uniteler) return;
+            b.uniteler.forEach(function (u) {
+                if (!u.icerikler) return;
+                u.icerikler.forEach(function (ic) {
+                    // Aktif gorev
+                    var g = ic.gorev;
+                    if (g && g.atananId) {
+                        if (fAtanan.length && fAtanan.indexOf(g.atananAd || '') === -1) return;
+                        var isOverdue = g.durum !== 'Tamamland\u0131' && g.sonTarih && new Date() > new Date(g.sonTarih);
+                        var wasLate = g.durum === 'Tamamland\u0131' && g.sonTarih && g.tamamlanmaTarihi && new Date(g.tamamlanmaTarihi) > new Date(g.sonTarih);
+                        rows.push({
+                            kitapId: b.id, ders: b.ders, unite: u.ad, ad: ic.ad,
+                            asama: g.asama || ic.durum || '', kisi: g.atananAd || '',
+                            kisiId: g.atananId, atanma: g.atanmaTarihi || '', sonTarih: g.sonTarih || '',
+                            tamamlanma: g.tamamlanmaTarihi || '', durum: g.durum || '',
+                            gun: g.tahminiGun || 0, isHistory: false, isOverdue: isOverdue, wasLate: wasLate
+                        });
+                    }
+                    // Gecmis gorevler
+                    (ic.gorevGecmisi || []).forEach(function (gg) {
+                        if (!gg.atananId) return;
+                        if (fAtanan.length && fAtanan.indexOf(gg.atananAd || '') === -1) return;
+                        var wasLate = gg.sonTarih && gg.tamamlanmaTarihi && new Date(gg.tamamlanmaTarihi) > new Date(gg.sonTarih);
+                        rows.push({
+                            kitapId: b.id, ders: b.ders, unite: u.ad, ad: ic.ad,
+                            asama: gg.asama || '', kisi: gg.atananAd || '',
+                            kisiId: gg.atananId, atanma: gg.atanmaTarihi || '', sonTarih: gg.sonTarih || '',
+                            tamamlanma: gg.tamamlanmaTarihi || '', durum: 'Onayland\u0131',
+                            gun: gg.tahminiGun || 0, isHistory: true, isOverdue: false, wasLate: wasLate
+                        });
+                    });
+                });
+            });
+        });
+        return rows;
+    }
+
+    function renderGorevKisi(bk) {
+        var rows = collectGorevData(bk);
+        // Kisi bazli gruplama
+        var byKisi = {};
+        rows.forEach(function (r) {
+            var key = r.kisi || 'Bilinmiyor';
+            if (!byKisi[key]) byKisi[key] = { aktif: 0, devam: 0, gecikli: 0, tamamlandi: 0, onaylandi: 0, zamaninda: 0, gecikmeli: 0, toplam: 0, rows: [] };
+            var p = byKisi[key];
+            p.toplam++;
+            p.rows.push(r);
+            if (r.isHistory) {
+                p.onaylandi++;
+                if (r.wasLate) p.gecikmeli++; else p.zamaninda++;
+            } else if (r.durum === 'Tamamland\u0131') {
+                p.tamamlandi++;
+                if (r.wasLate) p.gecikmeli++; else p.zamaninda++;
+            } else if (r.isOverdue) {
+                p.gecikli++;
+            } else {
+                p.devam++;
+            }
+        });
+
+        var entries = Object.keys(byKisi).sort(function (a, b) { return byKisi[b].toplam - byKisi[a].toplam; });
+        var toplamKisi = entries.length;
+        var toplamGorev = rows.length;
+        var toplamZamaninda = 0, toplamGecikmeli = 0, toplamAktifGecikli = 0;
+        entries.forEach(function (k) { var p = byKisi[k]; toplamZamaninda += p.zamaninda; toplamGecikmeli += p.gecikmeli; toplamAktifGecikli += p.gecikli; });
+
+        var h = '<div class="rpt-stats">';
+        h += statCard(toplamKisi, 'Ki\u015fi', '#8b5cf6');
+        h += statCard(toplamGorev, 'Toplam G\u00f6rev', '#3b82f6');
+        h += statCard(toplamZamaninda, 'Zaman\u0131nda', '#22c55e');
+        h += statCard(toplamGecikmeli, 'Gecikmeli', '#f59e0b');
+        h += statCard(toplamAktifGecikli, 'Aktif Geciken', '#ef4444');
+        h += '</div>';
+
+        entries.forEach(function (name) {
+            var p = byKisi[name];
+            var tamamlanan = p.zamaninda + p.gecikmeli;
+            var basariPct = tamamlanan > 0 ? Math.round((p.zamaninda / tamamlanan) * 100) : 0;
+            h += '<div class="rpt-card"><div class="rpt-card-header"><span>' + esc(name);
+            if (p.gecikli) h += ' <span class="rpt-overdue-badge">' + p.gecikli + ' geciken</span>';
+            h += '</span><span class="rpt-badge">' + p.toplam + ' g\u00f6rev';
+            if (tamamlanan > 0) h += ' \u00b7 %' + basariPct + ' zaman\u0131nda';
+            h += '</span></div>';
+            h += '<div class="rpt-card-body" style="padding:12px 16px 0">';
+            // Ozet chips
+            h += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
+            if (p.devam) h += '<span class="gorev-chip gorev-chip-devam">' + p.devam + ' devam</span>';
+            if (p.gecikli) h += '<span class="gorev-chip gorev-chip-gecikli">' + p.gecikli + ' geciken</span>';
+            if (p.tamamlandi) h += '<span class="gorev-chip gorev-chip-tamamlandi">' + p.tamamlandi + ' tamamland\u0131</span>';
+            if (p.onaylandi) h += '<span class="gorev-chip gorev-chip-onaylandi">' + p.onaylandi + ' onayland\u0131</span>';
+            if (p.zamaninda) h += '<span class="gorev-chip" style="background:rgba(34,197,94,.12);color:#16a34a">' + p.zamaninda + ' zaman\u0131nda</span>';
+            if (p.gecikmeli) h += '<span class="gorev-chip" style="background:rgba(245,158,11,.12);color:#d97706">' + p.gecikmeli + ' gecikmeli</span>';
+            h += '</div>';
+            // Tablo
+            h += '<table class="rpt-table"><thead><tr><th>Kitap</th><th>\u0130\u00e7erik</th><th>A\u015fama</th><th>Atanma</th><th>Son Tarih</th><th>Tamamlanma</th><th>Sonu\u00e7</th></tr></thead><tbody>';
+            p.rows.forEach(function (r) {
+                var cls = r.isOverdue ? ' class="rpt-row-overdue"' : (r.wasLate ? ' class="rpt-row-late"' : '');
+                h += '<tr' + cls + '>';
+                h += '<td>#' + esc(r.kitapId) + ' ' + esc(r.ders) + '</td>';
+                h += '<td>' + esc(r.ad) + '</td>';
+                h += '<td>' + esc(r.asama) + '</td>';
+                h += '<td>' + esc(r.atanma) + '</td>';
+                h += '<td>' + esc(r.sonTarih) + '</td>';
+                h += '<td>' + esc(r.tamamlanma || '-') + '</td>';
+                var stLbl, stCls;
+                if (r.isHistory) { stLbl = r.wasLate ? 'Gecikmeli \u2713' : 'Zaman\u0131nda \u2713'; stCls = r.wasLate ? 'rpt-gun-overdue' : 'rpt-gun-ok'; }
+                else if (r.durum === 'Tamamland\u0131') { stLbl = r.wasLate ? 'Gecikmeli' : 'Zaman\u0131nda'; stCls = r.wasLate ? 'rpt-gun-warn' : 'rpt-gun-ok'; }
+                else if (r.isOverdue) { stLbl = 'Gecikiyor!'; stCls = 'rpt-gun-overdue'; }
+                else { stLbl = 'Devam'; stCls = ''; }
+                h += '<td class="' + stCls + '">' + stLbl + '</td>';
+                h += '</tr>';
+            });
+            h += '</tbody></table></div></div>';
+        });
+        return h || '<div style="padding:24px;text-align:center;color:var(--text-light)">Hi\u00e7 g\u00f6rev atanmam\u0131\u015f</div>';
+    }
+
+    /* ═══════════════════════════════════════════
+       10. GOREV BAZLI RAPOR
+    ═══════════════════════════════════════════ */
+    function renderGorevBazli(bk) {
+        var rows = collectGorevData(bk);
+        // Istatistikler
+        var toplamAktif = 0, toplamDevam = 0, toplamGecikli = 0, toplamTamamlandi = 0, toplamOnaylandi = 0, toplamZamaninda = 0, toplamGecikmeli = 0;
+        rows.forEach(function (r) {
+            if (r.isHistory) { toplamOnaylandi++; if (r.wasLate) toplamGecikmeli++; else toplamZamaninda++; }
+            else if (r.durum === 'Tamamland\u0131') { toplamTamamlandi++; if (r.wasLate) toplamGecikmeli++; else toplamZamaninda++; }
+            else if (r.isOverdue) toplamGecikli++;
+            else toplamDevam++;
+        });
+        toplamAktif = toplamDevam + toplamGecikli + toplamTamamlandi;
+
+        var h = '<div class="rpt-stats">';
+        h += statCard(rows.length, 'Toplam G\u00f6rev', '#3b82f6');
+        h += statCard(toplamAktif, 'Aktif', '#f59e0b');
+        h += statCard(toplamGecikli, 'Geciken', '#ef4444');
+        h += statCard(toplamZamaninda, 'Zaman\u0131nda', '#22c55e');
+        h += statCard(toplamGecikmeli, 'Gecikmeli Biten', '#f97316');
+        h += statCard(toplamOnaylandi, 'Onayland\u0131', '#8b5cf6');
+        h += '</div>';
+
+        // Sıralama: geciken > aktif > tamamlanan > onaylanan
+        rows.sort(function (a, b) {
+            var pa = a.isOverdue ? 0 : (!a.isHistory && a.durum !== 'Tamamland\u0131' ? 1 : (a.durum === 'Tamamland\u0131' ? 2 : 3));
+            var pb = b.isOverdue ? 0 : (!b.isHistory && b.durum !== 'Tamamland\u0131' ? 1 : (b.durum === 'Tamamland\u0131' ? 2 : 3));
+            return pa - pb;
+        });
+
+        h += '<div class="rpt-card"><div class="rpt-card-header"><span>T\u00fcm G\u00f6revler</span><span class="rpt-badge">' + rows.length + ' g\u00f6rev</span></div>';
+        h += '<div class="rpt-card-body">';
+        h += '<table class="rpt-table"><thead><tr><th>Kitap</th><th>\u0130\u00e7erik</th><th>A\u015fama</th><th>Ki\u015fi</th><th>Atanma</th><th>Son Tarih</th><th>Tamamlanma</th><th>Durum</th></tr></thead><tbody>';
+        rows.forEach(function (r) {
+            var cls = r.isOverdue ? ' class="rpt-row-overdue"' : (r.wasLate ? ' class="rpt-row-late"' : '');
+            h += '<tr' + cls + '>';
+            h += '<td>#' + esc(r.kitapId) + ' ' + esc(r.ders) + '</td>';
+            h += '<td>' + esc(r.ad) + '</td>';
+            h += '<td>' + esc(r.asama) + '</td>';
+            h += '<td>' + esc(r.kisi) + '</td>';
+            h += '<td>' + esc(r.atanma) + '</td>';
+            h += '<td>' + esc(r.sonTarih) + '</td>';
+            h += '<td>' + esc(r.tamamlanma || '-') + '</td>';
+            var stLbl, stCls;
+            if (r.isHistory) { stLbl = r.wasLate ? 'Gecikmeli \u2713' : 'Onayland\u0131 \u2713'; stCls = r.wasLate ? 'rpt-gun-overdue' : 'rpt-gun-ok'; }
+            else if (r.durum === 'Tamamland\u0131') { stLbl = r.wasLate ? 'Gecikmeli' : 'Tamamland\u0131'; stCls = r.wasLate ? 'rpt-gun-warn' : 'rpt-gun-ok'; }
+            else if (r.isOverdue) {
+                var g = Math.abs(Math.ceil((new Date(r.sonTarih) - new Date()) / 86400000));
+                stLbl = g + ' g\u00fcn ge\u00e7ti!'; stCls = 'rpt-gun-overdue';
+            }
+            else {
+                if (r.sonTarih) {
+                    var kalan = Math.ceil((new Date(r.sonTarih) - new Date()) / 86400000);
+                    stLbl = kalan + ' g\u00fcn kald\u0131'; stCls = kalan <= 2 ? 'rpt-gun-warn' : '';
+                } else { stLbl = 'Devam'; stCls = ''; }
+            }
+            h += '<td class="' + stCls + '">' + stLbl + '</td>';
+            h += '</tr>';
+        });
+        h += '</tbody></table></div></div>';
+        return h || '<div style="padding:24px;text-align:center;color:var(--text-light)">Hi\u00e7 g\u00f6rev atanmam\u0131\u015f</div>';
+    }
+
     /* ─── Shared table builder ─── */
     function bookTable(list, hideders) {
         var h = '<table class="rpt-table"><thead><tr><th>Kod</th>';
@@ -842,6 +1037,7 @@
                 case 'notlar': pdfNotlar(p, bk); break;
                 case 'yayinevi': pdfYayinevi(p, bk); break;
                 case 'gelmedi': pdfGelmedi(p, bk); break;
+                case 'gorevKisi': case 'gorevBazli': pdfGenericTable(p); break;
             }
             p.doc.save('Edop_' + activeReport + '_' + new Date().toISOString().slice(0, 10) + '.pdf');
         });
@@ -1051,6 +1247,26 @@
         } else {
             p.doc.text('T\u00fcm i\u00e7erikler gelmi\u015f.', 14, p.y); p.y += 6;
         }
+    }
+
+    /* Generic PDF: rapor body'sindeki tabloyu direkt PDF'e al */
+    function pdfGenericTable(p) {
+        var body = document.getElementById('reportsBody');
+        if (!body) return;
+        var tables = body.querySelectorAll('.rpt-table');
+        tables.forEach(function (tbl) {
+            var heads = []; var rows = [];
+            tbl.querySelectorAll('thead th').forEach(function (th) { heads.push(th.textContent.trim()); });
+            tbl.querySelectorAll('tbody tr').forEach(function (tr) {
+                var r = [];
+                tr.querySelectorAll('td').forEach(function (td) { r.push(td.textContent.trim()); });
+                rows.push(r);
+            });
+            if (heads.length && rows.length) {
+                pdfAutoTable(p, heads, rows, { styles: { fontSize: 7, cellPadding: 1.5 } });
+                p.y += 4;
+            }
+        });
     }
 
 })();
