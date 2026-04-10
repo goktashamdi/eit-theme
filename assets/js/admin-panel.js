@@ -16,7 +16,7 @@
     var defLists = {
         kitapDurumlari: ['Havuzda', '\u0130\u015flemde', 'TTKB Onay\u0131', 'Ask\u0131da', 'Pasif'],
         icerikDurumlari: ['\u0130\u00e7erik Gelmedi', '\u0130\u00e7erik Geldi', '\u00d6n \u0130nceleme', 'T\u00fcrk\u00e7e Okuma', '\u00dcretime Ba\u015fland\u0131', '\u00dcretim Devam Ediyor', 'E-\u0130\u00e7erik \u00dcretim Tamamland\u0131', '\u00d6n Kontrol', 'Scorm V2', 'Tashih', 'Son Kontrol', 'Tamamland\u0131'],
-        eIcerikTurleri: ['Video', 'Etkile\u015fimli \u0130\u00e7erik', 'Animasyon', 'Ses', '\u0130nfografik', 'Sunu', 'G\u00f6rsel', 'Kavram Haritas\u0131', 'Sim\u00fclasyon', '3B Modelleme', 'Ses Dosyas\u0131'],
+        eIcerikTurleri: ['Video', 'Etkile\u015fimli \u0130\u00e7erik', 'Animasyon', 'Ses', '\u0130nfografik', 'Sunu', 'G\u00f6rsel', 'Kavram Haritas\u0131', 'Sim\u00fclasyon', '3B Modelleme', 'Ses Dosyas\u0131', 'PDF'],
         maxImageSizeMB: 5
     };
     window.eitDefLists = defLists;

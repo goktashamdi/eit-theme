@@ -11,6 +11,8 @@
     var currentBook = null;
     var selectedIcerikler = {}; // { 'ui-ii': true }
     var openPanels = {}; // { 'ui-ii': true }
+    var bulkAllKeys = [];
+    var bulkSureValue = 7;
 
     var icerikDurumlari = [
         '\u0130\u00e7erik Gelmedi',
@@ -270,20 +272,61 @@
         var canAssign = !!mp.gorev_ata;
         var canNote = !!mp.not_ekle;
         var canBulk = !!mp.toplu_islem;
+        // Toplu secim: secilebilir key'leri topla
+        bulkAllKeys = [];
+        if (canBulk && !isTeslim) {
+            b.uniteler.forEach(function (unite, ui) {
+                unite.icerikler.forEach(function (ic, ii) {
+                    if (ic.durum === 'Tamamland\u0131') return;
+                    bulkAllKeys.push(ui + '-' + ii);
+                });
+            });
+            // Gecersiz secimi temizle (Tamamlandi olmus vs.)
+            var validKeys = {};
+            bulkAllKeys.forEach(function (k) { validKeys[k] = true; });
+            Object.keys(selectedIcerikler).forEach(function (k) {
+                if (!validKeys[k]) delete selectedIcerikler[k];
+            });
+        }
         var selCount = Object.keys(selectedIcerikler).length;
 
-        // Toplu secim bar
-        if (selCount > 0 && canBulk) {
-            h += '<div class="ic-bulk-bar">';
-            h += '<span class="bulk-count">\u2713 ' + selCount + ' se\u00e7ili</span>';
-            h += '<button class="bulk-next-btn" id="bulkNext">Sonraki A\u015famaya \u25b8</button>';
-            h += '<select class="bulk-asama-select" id="bulkAsama"><option value="">A\u015fama Se\u00e7...</option>';
-            icerikDurumlari.forEach(function (d) {
-                var dis = d === '\u00dcretim Devam Ediyor' ? ' disabled' : '';
-                h += '<option value="' + esc(d) + '"' + dis + '>' + esc(d) + '</option>';
-            });
-            h += '</select>';
-            h += '<button class="bulk-clear-btn" id="bulkClear">\u2715</button>';
+        // Toplu secim toolbar
+        if (canBulk && !isTeslim && bulkAllKeys.length > 0) {
+            var allChecked = selCount > 0 && selCount === bulkAllKeys.length;
+            var someChecked = selCount > 0 && selCount < bulkAllKeys.length;
+            var hasSel = selCount > 0;
+            h += '<div class="ic-select-toolbar">';
+            h += '<label class="bulk-select-all-label"><input type="checkbox" id="bulkSelectAll"' + (allChecked ? ' checked' : '') + (someChecked ? ' data-indeterminate="1"' : '') + '> T\u00fcm\u00fcn\u00fc Se\u00e7 <span class="bulk-all-count">(' + bulkAllKeys.length + ')</span></label>';
+            if (hasSel) {
+                h += '<span class="bulk-count">\u2713 ' + selCount + ' se\u00e7ili</span>';
+                h += '<span class="bulk-sep">|</span>';
+                // Tur
+                var turler = (window.eitDefLists || {}).eIcerikTurleri || [];
+                if (turler.length) {
+                    h += '<select class="bulk-action-select" id="bulkSetTur"><option value="">T\u00fcr...</option>';
+                    turler.forEach(function (t) { h += '<option value="' + esc(t) + '">' + esc(t) + '</option>'; });
+                    h += '</select>';
+                }
+                // Asama
+                h += '<select class="bulk-action-select" id="bulkSetAsama"><option value="">A\u015fama...</option>';
+                icerikDurumlari.forEach(function (d) {
+                    var dis = d === '\u00dcretim Devam Ediyor' ? ' disabled' : '';
+                    h += '<option value="' + esc(d) + '"' + dis + '>' + esc(d) + '</option>';
+                });
+                h += '</select>';
+                // Kisi
+                var wpUsers = window.eitWpUsers || [];
+                h += '<select class="bulk-action-select" id="bulkSetKisi"><option value="">Ki\u015fi...</option>';
+                wpUsers.forEach(function (u) {
+                    if (u.role === 'admin') return;
+                    h += '<option value="' + u.id + '">' + esc(u.name) + '</option>';
+                });
+                h += '</select>';
+                // Sure
+                h += '<div class="bulk-sure-wrap"><div class="bulk-sure-inner"><input type="number" class="bulk-sure-input" id="bulkSure" min="1" value="' + bulkSureValue + '" placeholder="g\u00fcn"><button class="bulk-sure-apply" id="bulkSureApply" title="S\u00fcreyi se\u00e7ili g\u00f6revlere uygula">\u2713</button></div></div>';
+                // Temizle
+                h += '<button class="bulk-clear-btn" id="bulkClear">\u2715</button>';
+            }
             h += '</div>';
         }
 
@@ -429,6 +472,9 @@
                         var kalan = Math.ceil((new Date(gorev.sonTarih) - new Date()) / 86400000);
                         h += '<span class="ic-row-gun' + (isOverdue ? ' ic-gun-overdue' : '') + '">' + kalan + 'g</span>';
                     }
+                    if (canAssign && !isTeslim && gorevAtanabilirAsamalar.indexOf(currentDurum) > -1) {
+                        h += '<button class="gorev-degistir-btn" data-ui="' + ui + '" data-ii="' + ii + '" title="Ki\u015fiyi De\u011fi\u015ftir">&#8635;</button>';
+                    }
                 } else if (gorevTamamlandi) {
                     h += '<span class="ic-row-atanan gorev-tamamlandi-tag">' + esc(gorev.atananAd) + ' \u2713</span>';
                 }
@@ -547,35 +593,116 @@
             });
         });
 
-        // Toplu secim: sonraki asama
-        var bulkNext = document.getElementById('bulkNext');
-        if (bulkNext) bulkNext.addEventListener('click', function () {
+        // Tumunu sec checkbox
+        var bulkSelectAllEl = document.getElementById('bulkSelectAll');
+        if (bulkSelectAllEl) {
+            if (bulkSelectAllEl.dataset.indeterminate === '1') bulkSelectAllEl.indeterminate = true;
+            bulkSelectAllEl.addEventListener('change', function () {
+                if (this.checked) {
+                    bulkAllKeys.forEach(function (key) { selectedIcerikler[key] = true; });
+                } else {
+                    selectedIcerikler = {};
+                }
+                render();
+            });
+        }
+
+        // Toplu: Tur ata
+        var bulkSetTur = document.getElementById('bulkSetTur');
+        if (bulkSetTur) bulkSetTur.addEventListener('change', function () {
+            var val = this.value;
+            if (!val) return;
             Object.keys(selectedIcerikler).forEach(function (key) {
                 var parts = key.split('-');
-                var ic = b.uniteler[parseInt(parts[0])].icerikler[parseInt(parts[1])];
-                var next = sonrakiAsama(ic.durum || '\u0130\u00e7erik Gelmedi');
-                // Gorev gerektiren asamalari atla (elle atanmali)
-                if (next === '\u00dcretim Devam Ediyor') return;
-                setDurum(ic, next);
+                b.uniteler[parseInt(parts[0])].icerikler[parseInt(parts[1])].tur = val;
             });
-            selectedIcerikler = {};
             render();
             if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
         });
 
-        // Toplu secim: asama sec
-        var bulkAsama = document.getElementById('bulkAsama');
-        if (bulkAsama) bulkAsama.addEventListener('change', function () {
-            var target = this.value;
-            if (!target) return;
+        // Toplu: Asama ata
+        var bulkSetAsama = document.getElementById('bulkSetAsama');
+        if (bulkSetAsama) bulkSetAsama.addEventListener('change', function () {
+            var val = this.value;
+            if (!val) return;
+            Object.keys(selectedIcerikler).forEach(function (key) {
+                var parts = key.split('-');
+                setDurum(b.uniteler[parseInt(parts[0])].icerikler[parseInt(parts[1])], val);
+            });
+            render();
+            if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+        });
+
+        // Toplu: Kisi ata (gorev olustur)
+        var bulkSetKisi = document.getElementById('bulkSetKisi');
+        if (bulkSetKisi) bulkSetKisi.addEventListener('change', function () {
+            var userId = this.value;
+            if (!userId) return;
+            var wpUser = (window.eitWpUsers || []).find(function (u) { return String(u.id) === userId; });
+            if (!wpUser) return;
+            var days = bulkSureValue;
+            var deadline = new Date();
+            deadline.setDate(deadline.getDate() + days);
+            var deadlineStr = deadline.toISOString().split('T')[0];
+            var todayStr = new Date().toISOString().split('T')[0];
             Object.keys(selectedIcerikler).forEach(function (key) {
                 var parts = key.split('-');
                 var ic = b.uniteler[parseInt(parts[0])].icerikler[parseInt(parts[1])];
-                setDurum(ic, target);
+                if (ic.gorev && ic.gorev.atananId) {
+                    if (!ic.gorevGecmisi) ic.gorevGecmisi = [];
+                    ic.gorevGecmisi.push(ic.gorev);
+                }
+                var asamaAdi = ic.durum || '\u0130\u00e7erik Gelmedi';
+                ic.atanan = wpUser.name;
+                ic.gorev = {
+                    atananId: wpUser.id,
+                    atananAd: wpUser.name,
+                    durum: 'Devam Ediyor',
+                    asama: asamaAdi,
+                    atanmaTarihi: todayStr,
+                    tahminiGun: days,
+                    sonTarih: deadlineStr,
+                    tamamlanmaTarihi: null,
+                    atayan: (window.eitUser || {}).name || '',
+                    atayanId: (window.eitUser || {}).id || 0
+                };
+                // Uretime Baslandi → Uretim Devam Ediyor
+                if (asamaAdi === '\u00dcretime Ba\u015fland\u0131') {
+                    setDurum(ic, '\u00dcretim Devam Ediyor');
+                }
             });
-            selectedIcerikler = {};
             render();
             if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+        });
+
+        // Toplu: Sure degerini hafizada tut
+        var bulkSure = document.getElementById('bulkSure');
+        if (bulkSure) bulkSure.addEventListener('input', function () {
+            bulkSureValue = parseInt(this.value) || 7;
+        });
+
+        // Toplu: Sure uygula butonu (mevcut gorevlerin tarihini degistir)
+        var bulkSureApply = document.getElementById('bulkSureApply');
+        if (bulkSureApply) bulkSureApply.addEventListener('click', function () {
+            var days = bulkSureValue;
+            if (days < 1) return;
+            var deadline = new Date();
+            deadline.setDate(deadline.getDate() + days);
+            var deadlineStr = deadline.toISOString().split('T')[0];
+            var changed = false;
+            Object.keys(selectedIcerikler).forEach(function (key) {
+                var parts = key.split('-');
+                var ic = b.uniteler[parseInt(parts[0])].icerikler[parseInt(parts[1])];
+                if (ic.gorev && ic.gorev.atananId) {
+                    ic.gorev.tahminiGun = days;
+                    ic.gorev.sonTarih = deadlineStr;
+                    changed = true;
+                }
+            });
+            if (changed) {
+                render();
+                if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+            }
         });
 
         // Toplu secim: temizle
@@ -686,6 +813,61 @@
                 setDurum(ic, sonrakiAsama(ic.durum));
                 render();
                 if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+            });
+        });
+
+        // Gorev: Kisi degistir
+        $page.querySelectorAll('.gorev-degistir-btn').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var ui = parseInt(this.dataset.ui), ii = parseInt(this.dataset.ii);
+                var ic = b.uniteler[ui].icerikler[ii];
+                var container = this.closest('.ic-row-gorev');
+                var wpUsers = window.eitWpUsers || [];
+                var sh = '<select class="ic-atanan-select ic-atanan-degistir" data-ui="' + ui + '" data-ii="' + ii + '">';
+                sh += '<option value="">Ki\u015fi Se\u00e7...</option>';
+                wpUsers.forEach(function (u) {
+                    if (u.role === 'admin') return;
+                    sh += '<option value="' + u.id + '"' + (ic.gorev && String(ic.gorev.atananId) === String(u.id) ? ' disabled' : '') + '>' + esc(u.name) + '</option>';
+                });
+                sh += '</select>';
+                container.innerHTML = sh;
+                var newSel = container.querySelector('.ic-atanan-degistir');
+                newSel.focus();
+                newSel.addEventListener('change', function () {
+                    var userId = this.value;
+                    if (!userId) { render(); return; }
+                    var wpUser = wpUsers.find(function (u) { return String(u.id) === userId; });
+                    if (!wpUser) { render(); return; }
+                    showGorevModal(wpUser, function (days) {
+                        var deadline = new Date();
+                        deadline.setDate(deadline.getDate() + days);
+                        if (ic.gorev && ic.gorev.atananId) {
+                            if (!ic.gorevGecmisi) ic.gorevGecmisi = [];
+                            ic.gorevGecmisi.push(ic.gorev);
+                        }
+                        var asamaAdi = ic.durum || '\u0130\u00e7erik Gelmedi';
+                        ic.atanan = wpUser.name;
+                        ic.gorev = {
+                            atananId: wpUser.id,
+                            atananAd: wpUser.name,
+                            durum: 'Devam Ediyor',
+                            asama: asamaAdi,
+                            atanmaTarihi: new Date().toISOString().split('T')[0],
+                            tahminiGun: days,
+                            sonTarih: deadline.toISOString().split('T')[0],
+                            tamamlanmaTarihi: null,
+                            atayan: (window.eitUser || {}).name || '',
+                            atayanId: (window.eitUser || {}).id || 0
+                        };
+                        render();
+                        if (window.eitMarkDirty && currentBook) window.eitMarkDirty(currentBook.id); if (window.eitSave) window.eitSave();
+                    });
+                });
+                newSel.addEventListener('blur', function () {
+                    var s = newSel;
+                    setTimeout(function () { if (!s.value) render(); }, 150);
+                });
             });
         });
 

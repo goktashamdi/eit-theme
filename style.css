@@ -2,7 +2,7 @@
 Theme Name: EIT Dashboard - Tema
 Theme URI: https://edop.com.tr
 Description: Egitim ve Inceleme Takip sistemi (TEMA)
-Version: 2.7.4
+Version: 2.7.5
 Author: EIT
 Text Domain: eit
 */
@@ -2751,37 +2751,59 @@ body.dark-mode .tl-icon-current { background: #1e293b; }
 body.dark-mode .tl-gorev-name { background: rgba(59,130,246,.15); color: #93c5fd; }
 body.dark-mode .tl-gorev-gun { background: rgba(255,255,255,.06); }
 
-/* ─── Toplu Secim Bar ─── */
-.ic-bulk-bar {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 16px;
-    background: rgba(239,246,255,.95);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    border-bottom: 2px solid #3b82f6;
+/* ─── Toplu Secim Toolbar ─── */
+.ic-select-toolbar {
+    display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+    background: rgba(99,102,241,.04); border: 1px solid rgba(99,102,241,.12);
+    border-radius: 6px; margin-bottom: 8px; flex-wrap: wrap;
     position: sticky; top: 0; z-index: var(--z-bulk-bar);
 }
-.bulk-count { font-size: 13px; font-weight: 700; color: #1d4ed8; }
-.bulk-next-btn {
-    padding: 6px 14px; border: none; border-radius: 6px;
-    background: #3b82f6; color: #fff; font-size: 12px; font-weight: 600;
-    cursor: pointer; transition: all .15s;
+.bulk-select-all-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 600; color: #4f46e5; cursor: pointer; white-space: nowrap;
 }
-.bulk-next-btn:hover { background: #2563eb; transform: translateY(-1px); }
-.bulk-asama-select {
-    padding: 4px 8px; border: 1px solid #93c5fd; border-radius: 6px;
-    font-size: 12px; background: #fff; color: var(--text-primary);
+.bulk-select-all-label input[type="checkbox"] { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; }
+.bulk-all-count { font-weight: 400; color: #6b7280; font-size: 12px; }
+.bulk-count { font-size: 12px; font-weight: 700; color: #1d4ed8; white-space: nowrap; }
+.bulk-sep { color: #cbd5e1; font-size: 14px; user-select: none; }
+.bulk-action-select {
+    padding: 4px 8px; border-radius: 4px; border: 1px solid #c7d2fe;
+    font-size: 12px; background: #fff; color: #374151; cursor: pointer; max-width: 140px;
 }
+.bulk-action-select:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,.12); outline: none; }
+.bulk-sure-wrap { white-space: nowrap; }
+.bulk-sure-inner {
+    position: relative; display: inline-flex; align-items: center;
+}
+.bulk-sure-input {
+    width: 62px; padding: 4px 24px 4px 6px; border-radius: 4px; border: 1px solid #c7d2fe;
+    font-size: 12px; text-align: center; background: #fff; color: #374151;
+}
+.bulk-sure-input:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,.12); outline: none; }
+.bulk-sure-input::placeholder { color: #9ca3af; font-size: 11px; }
+.bulk-sure-apply {
+    position: absolute; right: 2px; top: 50%; transform: translateY(-50%);
+    width: 18px; height: 18px; border-radius: 3px; border: none;
+    font-size: 11px; background: transparent; color: #a5b4fc;
+    cursor: pointer; transition: all .15s; display: flex; align-items: center; justify-content: center;
+    padding: 0; line-height: 1;
+}
+.bulk-sure-apply:hover { background: #6366f1; color: #fff; }
 .bulk-clear-btn {
-    width: 28px; height: 28px; border: 1px solid #93c5fd; border-radius: 6px;
-    background: #fff; color: #64748b; font-size: 14px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border: 1px solid #c7d2fe; border-radius: 4px;
+    background: #fff; color: #64748b; font-size: 13px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; margin-left: auto; flex-shrink: 0;
 }
 .bulk-clear-btn:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
-
-body.dark-mode .ic-bulk-bar { background: rgba(30,41,59,.95); backdrop-filter: blur(8px); border-color: #3b82f6; }
+body.dark-mode .ic-select-toolbar { background: rgba(99,102,241,.06); border-color: rgba(99,102,241,.15); }
+body.dark-mode .bulk-select-all-label { color: #818cf8; }
+body.dark-mode .bulk-all-count { color: #94a3b8; }
 body.dark-mode .bulk-count { color: #93c5fd; }
-body.dark-mode .bulk-asama-select { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+body.dark-mode .bulk-sep { color: #475569; }
+body.dark-mode .bulk-action-select { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+body.dark-mode .bulk-sure-input { background: #0f172a; border-color: #334155; color: #e2e8f0; }
+body.dark-mode .bulk-sure-apply { color: #4f46e5; }
+body.dark-mode .bulk-sure-apply:hover { background: #6366f1; color: #fff; }
 body.dark-mode .bulk-clear-btn { background: #0f172a; border-color: #334155; color: #94a3b8; }
 
 /* ─── Teslim Badge (detay header) ─── */
@@ -3231,6 +3253,14 @@ body.dark-mode .gorev-modal-cancel:hover { background: #0f172a; }
     background: #22c55e; color: #fff; transition: background .15s;
 }
 .gorev-approve-btn:hover { background: #16a34a; }
+.gorev-degistir-btn {
+    padding: 2px 6px; border-radius: 3px; font-size: 11px;
+    border: 1px solid rgba(99,102,241,.3); cursor: pointer; margin-left: 4px;
+    background: transparent; color: #6366f1; transition: all .15s; line-height: 1;
+}
+.gorev-degistir-btn:hover { background: rgba(99,102,241,.1); border-color: #6366f1; }
+body.dark-mode .gorev-degistir-btn { color: #818cf8; border-color: rgba(129,140,248,.3); }
+body.dark-mode .gorev-degistir-btn:hover { background: rgba(129,140,248,.12); border-color: #818cf8; }
 
 /* Yeni durum dotlari */
 .dp-dot-geldi { background: #f59e0b; }
@@ -3471,8 +3501,8 @@ body.dark-mode .stat-box { background: rgba(255,255,255,.03); border-color: rgba
     .ic-row:has(.ic-checkbox) .ic-row-info { grid-column: 2; }
     .ic-row:has(.ic-checkbox) .ic-checkbox { grid-column: 1; }
     .unite-title { font-size: 13px; padding: 8px 10px; }
-    .ic-bulk-bar { flex-wrap: wrap; gap: 6px; padding: 8px 12px; }
-    .bulk-asama-select { flex: 1; min-width: 120px; }
+    .ic-select-toolbar { gap: 6px; padding: 8px 10px; }
+    .bulk-action-select { max-width: 120px; }
 }
 @media (max-width: 480px) {
     .dp-header-band { padding: 6px 10px; gap: 3px; font-size: 11px; }
@@ -3487,7 +3517,9 @@ body.dark-mode .stat-box { background: rgba(255,255,255,.03); border-color: rgba
     .ic-note-img img { max-width: 120px; }
     .ic-note-add { flex-wrap: wrap; }
     .ic-note-input { flex: 1; min-width: 0; font-size: 12px; }
-    .ic-bulk-bar { flex-direction: column; align-items: stretch; }
+    .ic-select-toolbar { gap: 5px; padding: 6px 8px; }
+    .bulk-action-select { max-width: 110px; font-size: 11px; }
+    .bulk-sure-input { width: 40px; }
     .unite-title { font-size: 12px; padding: 6px 8px; }
     .dp-back { width: 28px; height: 28px; }
 }
